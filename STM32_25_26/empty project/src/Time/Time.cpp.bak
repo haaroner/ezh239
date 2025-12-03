@@ -1,0 +1,14 @@
+#include "Time.h"
+
+namespace time_service
+{
+  void init()
+  {
+    RCC->CFGR &= RCC_CFGR_SW;//reset sw bits
+    RCC->CFGR |= RCC_CFGR_SW_HSI;//set hsi as system clock
+    
+    while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
+    
+    RCC->CR
+  }
+}

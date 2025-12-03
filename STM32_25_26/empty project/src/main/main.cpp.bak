@@ -1,0 +1,25 @@
+#pragma once
+#include "project_config.h"
+#include "time.h"
+
+int state = 0;
+
+int main(void)
+{
+  SystemInit();  
+  
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+  GPIOA->MODER &= ~GPIO_MODER_MODER1;
+  GPIOA->MODER |= GPIO_MODER_MODER1_0;
+  GPIOA->PUPDR &= ~GPIO_PUPDR_PUPDR1; 
+  GPIOA->PUPDR |= GPIO_PUPDR_PUPDR1_0;
+  
+  while(true)
+  {
+    GPIOA->BSRRL = GPIO_BSRR_BS_1;
+    for(int i = 0; i < 10000000; ++i);
+    GPIOA->BSRRH = GPIO_BSRR_BS_1;
+    for(int i = 0; i < 10000000; ++i);
+  }
+
+}

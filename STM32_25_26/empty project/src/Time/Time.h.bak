@@ -1,0 +1,9 @@
+#pragma once
+
+#include "project_config.h"
+
+namespace time_service
+{
+ void init();
+ void delay_ms();
+}

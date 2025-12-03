@@ -1,0 +1,14 @@
+.\objects\stream_buffer.o: RTOS\stream_buffer.c
+.\objects\stream_buffer.o: D:\keil\sys_files\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\stream_buffer.o: D:\keil\sys_files\ARM\ARMCC\Bin\..\include\string.h
+.\objects\stream_buffer.o: .\RTOS\include\FreeRTOS.h
+.\objects\stream_buffer.o: D:\keil\sys_files\ARM\ARMCC\Bin\..\include\stddef.h
+.\objects\stream_buffer.o: .\src\main\FreeRTOSConfig.h
+.\objects\stream_buffer.o: .\RTOS\include\projdefs.h
+.\objects\stream_buffer.o: .\RTOS\include\portable.h
+.\objects\stream_buffer.o: .\RTOS\include\deprecated_definitions.h
+.\objects\stream_buffer.o: .\RTOS\include\portmacro.h
+.\objects\stream_buffer.o: .\RTOS\include\mpu_wrappers.h
+.\objects\stream_buffer.o: .\RTOS\include\task.h
+.\objects\stream_buffer.o: .\RTOS\include\list.h
+.\objects\stream_buffer.o: .\RTOS\include\stream_buffer.h
