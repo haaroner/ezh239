@@ -1,0 +1,423 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{tikz}
+\usetikzlibrary{shadings}
+\usepackage[T2A]{fontenc} % ДОБАВЬТЕ ЭТУ СТРОКУ
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage[russian]{babel}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\author[Ежелев Г. И.]{Ежелев Г. И.}
+
+\newlength{\RightSidebarWidth}
+\setlength{\RightSidebarWidth}{0.8cm}
+
+% используем внешний шаблон sidebar
+\useoutertheme[right]{sidebar}
+
+% убираем стандартный верхний и нижний колонтитулы
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{}
+
+% наш вариант правой боковой панели
+\setbeamertemplate{sidebar right}{%
+	\begin{tikzpicture}[remember picture, overlay]
+		% Можно использовать structure.fg напрямую
+		\shade[top color=structure.fg!60, bottom color=structure.fg!10]
+		([xshift=-2.15cm]current page.north east) rectangle (current page.south east);
+		\node[anchor=center, align=center, font=\tiny, text width=2cm]
+		at ([xshift=-1cm, yshift=-1cm]current page.north east) {  % xshift чуть левее
+			\footnotesize \textcolor{structure.fg}{\textbf{STM32}}\\[0.3em]
+			\tiny \myshorttitle\\[0.3em]
+			\tiny \textit{\insertauthor}
+		};
+	\end{tikzpicture}
+}
+
+% чтобы содержимое не залезало под полосу
+\setbeamersize{text margin right=\RightSidebarWidth}
+\usepackage{newunicodechar}
+\usepackage{wasysym}
+\newunicodechar{😋}{\smiley}
+\def\myshorttitle{Глава 12. \\ Многопоточность. RTOS}
+\title[\myshorttitle]{Глава 12. Многопоточность. RTOS}
+
+\begin{document}
+	\begin{frame}
+	\includegraphics[width=10cm, height=8cm]{"mem.jpeg"}
+\end{frame}
+	\titlepage
+	\newpage
+	\large \textbf{\textcolor{structure.fg}{Управление задачами}}\\
+	$\bullet$ Весь код, который вы писали до этого - выполнялся последовательно. То есть был какой-то \textcolor{orange}{основной цикл} в котором выполнялся весь код.\\
+	$\bullet$ Такой подход называется \textcolor{structure.fg}{Super loop}\\
+	\begin{itemize}
+		\item Такой код быстрее писать и удобнее понимать
+	\item Завис один узел - \textcolor{orange}{гарантированно зависла вся программа}
+	\item Сложно писать распределение нагрузки. Если регулятор нужно обновлять раз в 100 мс, раз в 10 мс нужно опрашивать датчик и раз в 30 мс отправлять пакеты экрану - на каждое действие должен быть свой таймер (а если частота важна - то прерывание).
+	\item Многозадачность реализуется \textcolor{structure.fg}{конечным автоматом}.
+\end{itemize}
+\includegraphics[width=6cm, height=3cm]{rtos2.jpg}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Конечный автомат}}\\
+\textcolor{structure.fg}{Конечный автомат} (\textcolor{orange}{Finite State Machine, FSM}) - это программа, имеющая конечное число состояний и правил перехода между ними. В целом довольно простая мысль. Суть в том, как эти состояния реализовать.\\
+В случае робототехники:\\
+\begin{itemize}
+	\item \textcolor{orange}{Цикл делится на 3 части}: \textcolor{structure.fg}{Listen-Think-Act} (Слушай-Думай-Делай).
+	\item \textcolor{structure.fg}{Listen} - первая часть (в самом начале), занимается обработкой датчиков (\textcolor{red}{никаких чтений датчиков в других частях цикла - это костыль})
+	\item \textcolor{structure.fg}{Think} - Конечный автомат. Он обычно делится на две части.\\$\bullet$ \textcolor{orange}{Первая} - только выбор состояния на основании данных с датчиков. То есть набор условий:\\
+	if(state == 1) {[условия перехода из 1 -> \{2,..., n\}]} \\.... \\if(state == n){[условия перехода из 1 -> \{1,..., n-1\}]}
+	\newpage
+	$\bullet$ \textcolor{orange}{Вторая часть} - только выполнение состояний (без переходов между ними):\\
+	if(state == 1) {[Действие в состоянии 1]} \\.... \\if(state == n){[Действие в состоянии n]}
+	$\bullet$ Такой подход позволяет \textcolor{orange}{не запутаться во всех состояниях}, когда код разрастеться.
+	\item \textcolor{structure.fg}{Act} - В конце - отдача приказов узлам робота (моторы, экранчик и т.п.)\textcolor{red}{никаких моторов в середине кода!}.
+	\item \textcolor{structure.fg}{Listen-Think-Act} - это пример паттерна проектирования - это некоторый шаблон или идея, как надо реализовывать какой-то кусок кода (т.к. не вы первые догадались датчики читать и потом по данным с них двигаться).
+	\item Многие паттерны звучат очевидно и скучно, но при этом почему-то люди всё равно их игнорируют и пишут плохой код {\huge\smiley}
+\end{itemize}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Пример. Парсинг строки}}\\
+\includegraphics[width=12cm, height=8cm]{rtos1.png}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Параллельные задачи}}\\
+\includegraphics[width=13cm, height=8cm]{rtos3.png}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Параллельные задачи. Блокировки}}\\
+\includegraphics[width=13cm, height=8cm]{rtos4.png}
+\large \textbf{\textcolor{structure.fg}{Параллельные задачи. Переключение контекста}}\\
+\includegraphics[width=13cm, height=8cm]{rtos5.png}
+\large \textbf{\textcolor{structure.fg}{Параллельные задачи. Конкурентность}}\\
+\includegraphics[width=13cm, height=8cm]{rtos6.png}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Конкурентность}}\\
+\begin{itemize}
+	\item \textcolor{structure.fg}{Конкурентность} - исполнение нескольких задач \textcolor{orange}{одновременно}. Это не всегда значит, что задачи физических работают одновременно. \textcolor{orange}{Главное - они реализованы, как отдельные независимые задачи}, которые не знают о существовании других.
+	\item В случае, если одна задача отдает на время управление, \textcolor{orange}{программа переключается на исполнение другой задачи}. В этот момент происходит \textcolor{structure.fg}{переключение контекста} - сохранение данных одной задачи и подгрузка данных следующей.
+	\item \textcolor{orange}{Даже с одним ядром - такой подход имеет свои плюсы} - вам не нужно думать, как распределять ресурсы между задачами (моторы раз в 100 мс, регуляторы раз в 10...). Каждая идейная задача - отдельная параллельная задача в коде, система сама переключит контекст когда надо.
+\end{itemize}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Итог}}\\
+\includegraphics[width=12cm, height=8cm]{rtos7.png}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Варианты архитектур}}\\
+\includegraphics[width=12cm, height=8cm]{rtos8.png}
+\newpage 
+\large \textbf{\textcolor{structure.fg}{RTOS}}\\
+Все \textcolor{orange}{манипуляции с процессами} (например переключение контекста) осуществляет \textcolor{structure.fg}{планировщик(Scheduler)} - часть операционной системы.\\
+$\bullet$\textcolor{structure.fg}{Операционные системы реального времени} (Real Time Operating System, RTOS) - это ОС, которые ставят в приоритет не равномерность распределения ресурсов между задачами и удобство пользователя, а \textcolor{orange}{временную детерминированность}, т.е. реакция на событие произойдет в строго(почти) определенное время.\\
+Пример такой системы - FREERTOS, состоящей из:
+\begin{itemize}
+	\item \textcolor{structure.fg}{Планировщика(scheduler)} - решает, какая задача выполняется сейчас
+	\item \textcolor{structure.fg}{Диспетчера задач (Task manager)} - следит за состоянием задачи, памятью и тп.
+	\item \textcolor{structure.fg}{Управление памятью (Heap manager)} - управление данными задач (их целых 4-5 штук)
+	\item \textcolor{structure.fg}{Механизмы синхронизации} - очереди, семафоры, уведомления, группы событий.
+\end{itemize}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Популярность RTOS}}\\
+По опросу Eclipse Foundation для IoT (Internet of Things) устройств после Linux и Windows- \textcolor{orange}{самой популярной основой стал FREERTOS}, обогнав разработку без операционной системы (Bare Metal)\\
+\includegraphics[width=10cm, height=6.5cm]{linux.png}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Задачи во FREERTOS}}\\
+\textcolor{structure.fg}{Задача} - это какая-то функция, обычно реализованная как (почти)бесконечный цикл, планировщик их сам нарезает:\\
+\begin{tikzpicture}[remember picture,overlay]
+	
+	\node[anchor=north west] at ([xshift=-1cm,yshift=-1.5cm]current page.north west) {
+		\begin{tabular}{c}
+			\includegraphics[width=8cm, height=6cm]{task1.png}\\
+			{Как мы видим задачи в коде}
+		\end{tabular}
+	};
+	
+	\node[anchor=north west] at ([xshift=7cm,yshift=-1.5cm]current page.north west) {
+		\begin{tabular}{c}
+			\includegraphics[width=8cm, height=6cm]{task2.png}\\
+			{Их реальное исполнение}
+		\end{tabular}
+	};
+\end{tikzpicture}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Переключение задач}}\\
+\begin{itemize}
+	\item \textcolor{orange}{Каждую миллисекунду FreeRtos пробуждает ядро по тому самому прерыванию SysTick}. Каждый период между пробуждениями ОС так и называется - "тик".
+	\item Задачи \textcolor{structure.fg}{переключаются операционкой в следующих ситуациях}:
+	\item \textcolor{orange}{По приоритету задач}. В новый тик есть заждавшаяся задача того же приоритета или любая задача более высокого приоритета. Это реализовано через массив очередей(у каждого уровня приоритетов своя очередь) - pxReadyTasksLists[configMAX\_PRIORITIES].
+	\item \textcolor{orange}{Вытеснение (Preemption)}. Если неважная задача А ставиться на паузу прерыванием, например приемом пакета UART (а прерывания никто не отменял), а после приема пакета в очередь попадает более важная задача Б, то RTOS сразу последует в Б, не завершая А.
+	\newpage
+	\item \textcolor{orange}{Ожидание}. Мы можем поставить задачу в ожидание, пока какая-то другая задача что-то не сделает, что пробудит нашу задачу.
+	\item \textcolor{orange}{Блокировка}. Задачи могут обмениваться данными. Если задача попробует запросить данные у другой, которых еще нет, она заблокируется, пока данные не появятся, а в это время будут исполняться другие таски
+\end{itemize}
+\newpage
+\large \textbf{\textcolor{structure.fg}{Состояния задач}}\\
+\includegraphics[width=9cm, height=7.5cm]{task3.png}\\
+\newpage
+\large \textbf{\textcolor{structure.fg}{Состояния задач}}\\
+\begin{itemize}
+	\item \textcolor{structure.fg}{Ready} - После создания задача попадает в это состояние. Такие задачи готовы к исполнению и ждут внимания ядра
+	\item \textcolor{structure.fg}{Running} - выполнение
+	\item \textcolor{structure.fg}{Blocked} - заблокирована. Например вызвана задержка, или задача попыталась запросить данные от другой задачи, а их нет (Блокировка) или задача ожидает событие (Ожидание). В этом состоянии задача лежит в планировщике.
+	\item \textcolor{structure.fg}{Suspended} - приостановлена. Более радикальная мера, задача выбрасывается из планировщика. Нужна для отключения какого-то куска логики. Зачем нужно? => чтобы сохранить контекст и данные самой задачи.
+\end{itemize}
+\newpage
+\large \textbf{\textcolor{structure.fg}{сборка проекта FREERTOS}}\\
+Все файлы операционки уже есть в проекте. проверьте что все нужные файлы добавлены в keil:\\[5cm]
+\begin{tikzpicture}[remember picture,overlay]
+	
+	\node[anchor=north west] at ([xshift=0cm,yshift=-1.5cm]current page.north west) {
+		\begin{tabular}{c}
+			\includegraphics[width=5cm, height=4cm]{keil1.png}\\
+			{FreeRtosConfig.h}
+		\end{tabular}
+	};
+	
+	\node[anchor=north west] at ([xshift=10.5cm,yshift=-1.5cm]current page.north west) {
+		\begin{tabular}{c}
+			\includegraphics[width=5cm, height=4cm]{keil2.png}\\
+			{Все файлы операционки}
+		\end{tabular}
+	};
+		\node[anchor=north west] at ([xshift=5cm,yshift=-1.5cm]current page.north west) {
+		\begin{tabular}{c}
+			\includegraphics[width=5cm, height=4cm]{keil3.png}\\
+			{Не забудьте подключить}
+		\end{tabular}
+	};
+\end{tikzpicture}
+\textcolor{red}{Закоментировать SysTick в нашем Time.h, FREERTOS его тоже использует для синхронизации}\\
+Советую посмотреть файл FreeRtosConfig.h (он выложен в репе, скопируйте к себе, в проекте он возможно неправильный)
+\newpage
+\large \textbf{\textcolor{structure.fg}{Создание задачи}}\\
+\includegraphics[width=6cm, height=5cm]{task4.png}\\
+	\begin{tikzpicture}[remember picture,overlay]
+	\node[draw,rounded corners,fill=green!3,text width=9cm,align=left]
+	at (10.5,2.25) 
+	{\begin{itemize}
+			\item \textcolor{structure.fg}{pvTaskCode} - сама функция для исполнения
+			\item \textcolor{structure.fg}{pcName} - имя задачи (просто строка)
+			\item \textcolor{structure.fg}{usStackDepth} - \textcolor{orange}{глубина стека задачи} (об этом позже)
+			\item \textcolor{structure.fg}{pvParameters} - объект для передачи параметров если ничего не передаем - NULL
+			\item \textcolor{structure.fg}{uxPriority} - приоритет задачи для планировщика - больше $\Leftrightarrow$ важнее
+			\item \textcolor{structure.fg}{pxCreatedTask} - структура для управления задачей извне, можно передать NULL
+			\item Отметим, что в FREERTOS \textcolor{orange}{есть одна всегда запущенная задача с низшим приоритетом - Idle Task} (простой) (она даже есть выше на диаграмме what actually happens).
+			\item \textcolor{red}{Нельзя использовать RETURN!}
+			\item \textcolor{red}{А как переключать задачи?}
+	 \end{itemize}};
+ \end{tikzpicture}
+ \begin{frame}
+ \large \textbf{\textcolor{structure.fg}{Запуск задачи}}\\
+ \textcolor{red}{В файле main.cpp}:
+ \includegraphics[width=10cm, height=3cm]{task6.png}\\
+ \begin{tikzpicture}[remember picture,overlay]
+ 	
+ 	\node[anchor=north west] at ([xshift=0cm,yshift=-5.25cm]current page.north west) {
+ 		\begin{tabular}{c}
+ 			\includegraphics[width=5cm, height=3cm]{task5.png}\\
+ 			{main.cpp}
+ 		\end{tabular}
+ 	};
+ \end{tikzpicture}
+ \end{frame}
+ \begin{frame}
+ 	
+ 
+ \large \textbf{\textcolor{structure.fg}{Пример. Светодиод + аналоговый сигнал.}} \textcolor{red}{Код на github}\\
+ \includegraphics[width=5cm, height=5cm]{example_1.png}
+ \begin{tikzpicture}[remember picture,overlay]
+ 	\node[draw,rounded corners,fill=green!3,text width=6cm,align=left]
+ 	at (1,3) 
+ 	{\begin{itemize}
+ 			\item \textcolor{structure.fg}{Импорт библиотек}
+ 			\item \textcolor{structure.fg}{Далее прототипы функций}
+ 			\item \textcolor{structure.fg}{ADCValue} - где будем хранить данные с ADC. Не заубдьте про модификатор \textcolor{orange}{volatile}
+ 	\end{itemize}};
+ \end{tikzpicture}
+\end{frame}
+\begin{frame}
+ 
+ \large \textbf{\textcolor{structure.fg}{Пример. Запуск и инициализация.}} \textcolor{red}{Код на github}\\
+ \includegraphics[width=12cm, height=6cm]{example2.png}
+ \begin{tikzpicture}[remember picture,overlay]
+ 	\node[draw,rounded corners,fill=green!3,text width=8cm,align=left]
+ 	at (11,-0.3) 
+ 	{\begin{itemize}
+ 			\item \textcolor{structure.fg}{Инициализация периферии}
+ 			\item \textcolor{structure.fg}{Создание двух задач приоритета 1 (минимальный - 0 (Idle task))}
+ 			\item \textcolor{structure.fg}{Запуск планировщика задач} 
+ 	\end{itemize}};
+ \end{tikzpicture}
+\end{frame}
+\begin{frame}
+ 
+ \large \textbf{\textcolor{structure.fg}{Пример. Задача светодиода.}} \textcolor{red}{Код на github}\\
+ \includegraphics[width=10cm, height=6cm]{example3.png}
+ \begin{tikzpicture}[remember picture,overlay]
+ 	\node[draw,rounded corners,fill=green!3,text width=6cm,align=left]
+ 	at (1.5,3) 
+ 	{\begin{itemize}
+ 			\item \textcolor{structure.fg}{Изменение сигнала светодиода }1->0 или 0->1
+ 			\item \textcolor{structure.fg}{Задержка для мигания }500 тиков, т.е. 500мс
+ 	\end{itemize}};
+ \end{tikzpicture}
+ 
+\end{frame}
+\begin{frame}
+ \large \textbf{\textcolor{structure.fg}{Пример. Задача чтения аналогового сигнала}} \textcolor{red}{Код на github}\\
+ \includegraphics[width=10cm, height=6.5cm]{example4.png}
+ \begin{tikzpicture}[remember picture,overlay]
+ 	\node[draw,rounded corners,fill=green!3,text width=8cm,align=left]
+ 	at (11.3,0.75)  
+ 	{\begin{itemize}
+ 			\item \textcolor{structure.fg}{Ожидание готовности ADC}
+ 			\item \textcolor{structure.fg}{Чтение ADC}
+ 			\item \textcolor{structure.fg}{Опциональная задержка} - можете её не использовать
+ 			\item \textcolor{orange}{Не забудьте запустить ADC в int main()}\\ (ADC\_SoftwareStartConv(m\_ADCx))
+ 	\end{itemize}};
+ \end{tikzpicture}
+\end{frame}
+\begin{frame}
+ 
+ \large \textbf{\textcolor{structure.fg}{Синхронизации}}\\
+ $\bullet$ Сейчас мы запускали задачи, которые работали независимо друг от друга. В реальных проектах - это редкость.\\
+ $\bullet$ Можно выделить 3 основных вида взаимодействия задач:
+ \begin{itemize}
+ 	\item Обмен данными
+ 	\item Ожидание других задач
+ 	\item Ограничения доступа к ресурсам
+ \end{itemize}
+\includegraphics[width=7.5cm, height=4.5cm]{mem2.jpg}
+\end{frame}
+\begin{frame}
+ 
+  \large \textbf{\textcolor{structure.fg}{Обмен данными. Уведомления}}\\
+  \includegraphics[width=7.5cm, height=4cm]{exchange1.png}
+  \begin{itemize}
+  	\item xHandler - как раз структура для контроля задачи извне (последний аргумент при запуске задачи).
+  	\item xTaskNotifyTake - ожидание уведомление. Если уведомлений  нет - задача засыпает. В случае pdTrue - при выходе из TaskNotifyTake счетчик уведомлений обнуляется и задача проходит один раз. В случае pdFALSE - счетчик уменьшается на 1.
+  	\item xTaskNotifyGive - уведомить задачу по её TaskHandler, т.е. увеличить счётчик уведомлений на 1.
+  \end{itemize}
+  \end{frame}
+  \begin{frame}
+  	\begin{itemize}
+  	\item Для счетчика уведомления используют поле в структуре TCB (Task Control Block) - специальный блок, который выделяется после создания задачи.
+  	\item В нем лежат uint32\_t ulNotifiedValue - ячейка с любым числом и uint8\_t ucNotifyState - байт состояния (ждем уведомления; не ждем; получили, но еще не прочитали).
+  	\item Их и использует механизм уведомлений. Теоретически - в ячейку ulNotifiedValue можно положить любые данные, что позволяет существенно сэкономить память, не создавая очереди и т.п.
+  \end{itemize}
+\end{frame}
+\begin{frame}[t]
+	\large \textbf{\textcolor{structure.fg}{Обмен данными. StreamBuffer.} \textcolor{orange}{Отправка}}. Пример в \textcolor{red}{github}\\
+	\begin{itemize}
+		\item \textcolor{orange}{Stream Buffer} - это блокирующий способ обмена информацией между задачами. Все данные хранятся \textcolor{red}{побайтово}.
+		\item Если в нем закончится место - он остановит задачу, которая попытается в него что-то положить, пока не пройдет TicksToWait или место не освободиться
+		\item Очень удобен для работы с IO, например в случае UART у нас в любом случае приходят и отправляются байты, поэтому такой примитивной и \textcolor{orange}{легковесной структуры}нам хватит
+	\end{itemize}
+	\end{frame}
+\begin{frame}[t]
+  \large \textbf{\textcolor{structure.fg}{Обмен данными. StreamBuffer.} \textcolor{orange}{Отправка}}. Пример в \textcolor{red}{github}\\
+  \includegraphics[width=6cm, height=4cm]{buffer1.png}\\
+  \begin{tikzpicture}[remember picture,overlay]
+  	\node[draw,rounded corners,fill=green!3,text width=8.5cm,align=left]
+  	at (10.75,1.35) 
+  	{\begin{itemize}
+  			\item \textcolor{structure.fg}{xStreamBuffer} - хэндлер буфера, структура аналогичная хэндлеру для задачи, т.е. а.к.а. отссылка на конкретный буффер в памяти 
+  			\item \textcolor{structure.fg}{*pvTxDara} - указатель на начало фрагмента памяти с данными
+  			\item \textcolor{structure.fg}{xDataLengthBytes} - длина фрагмента памяти в байтах
+  			\item \textcolor{structure.fg}{xTicksToWait} - тайм-аут если в буфере закончилось место (Защита от вечной блокировки).
+  	\end{itemize}};
+  \end{tikzpicture}
+  
+\end{frame}
+\begin{frame}[t]
+  
+  \large \textbf{\textcolor{structure.fg}{Обмен данными. StreamBuffer.}\textcolor{orange}{Приём}}. Пример в \textcolor{red}{github}\\
+  \includegraphics[width=6cm, height=4cm]{buffer2.png}\\
+  \begin{tikzpicture}[remember picture,overlay]
+  	\node[draw,rounded corners,fill=green!3,text width=9cm,align=left]
+  	at (10.75,1.5) 
+  	{\begin{itemize}
+  			\item \textcolor{structure.fg}{xStreamBuffer} - хэндлер буфера, структура аналогичная хэндлеру для задачи, т.е. а.к.а. отссылка на конкретный буффер в памяти 
+  			\item \textcolor{structure.fg}{*pvRxDara} - указатель на начало фрагмента памяти для чтения
+  			\item \textcolor{structure.fg}{xDataLengthBytes} - таймаут блокировки, если буфер пустой (нечего читать).
+  			\item \textcolor{structure.fg}{xTicksToWait} - тайм-аут если в буфере закончилось место (Защита от вечной блокировки).
+  			\item textcolor{red}{Trigger Level} - необязательный параметр, который устанавливает минимальное количество байт в буфере чтобы проснуться (например для общения по UART это нужно, чтобы вы могли ожидать прием всего пакета, а не нескольких байт из него) (Trigger level есть в примере на github).
+  	\end{itemize}};
+  \end{tikzpicture}
+  
+\end{frame}
+
+\begin{frame}[t]
+\large \textbf{\textcolor{structure.fg}{Обмен данными. Queue.}\textcolor{orange}{Приём}}. Пример в \textcolor{red}{github}\\
+Следующий метод это очередь. Работает схожим образом, но по умолчанию хранит структуры в одной ячейке\\
+  \includegraphics[width=6cm, height=3.5cm]{queue1.png} \includegraphics[width=6cm, height=3.5cm]{queue2.png}\\
+  \begin{tikzpicture}[remember picture,overlay]
+  	\node[draw,rounded corners,fill=green!3,text width=14cm,align=left]
+  	at (6.75,-0.75) 
+  	{\begin{itemize}
+  			\item \textcolor{structure.fg}{xQueue} - хэндлер очереди, структура аналогичная хэндлеру для задачи, т.е. а.к.а. отссылка на конкретную очередь в памяти 
+  			\item \textcolor{structure.fg}{*pvItemQueue} - указатель на объект куда/откуда писать 
+  			\item \textcolor{structure.fg}{xTicksToWait} - тайм-аут если в буфере закончилось место (Защита от вечной блокировки).
+  	\end{itemize}};
+  \end{tikzpicture}
+  \end{frame}
+  \begin{frame}
+  	\large \textbf{\textcolor{structure.fg}{Ожидание задач. Семафоры}}. Пример в \textcolor{red}{github}
+  	\begin{itemize}
+  		\item \textcolor{orange}{Семафор} - это счётчик разрешений. Можно делать бинарными (1 разрешение), можно множественными.
+  		\item Задача берет разрешение, если оно есть, то счётчик уменьшается на 1, иначе зависает, в ожидании, что другая задача отдаст разрешение (в этом случае счетчик увеличиться на 1).
+  		\item При неудаче (нет доступных разрешений и прошел тайм-аут возвращает какое-то значение, можете его погуглить)
+
+  	\end{itemize}
+  \end{frame}
+  \begin{frame}
+  		\large \textbf{\textcolor{structure.fg}{Ожидание задач. Виды семафоров}}. Пример в \textcolor{red}{github}
+  		\begin{itemize}
+  			\item Отличаются только тем, что вы проинициализируете для первого аргумента \textcolor{red}{(на гитхабе пример бинарного семафора)}
+  			\item Бинарный семафор - одно разрешение
+  			\item Счётный семафор - внутри счётчик разрешений
+  			\item Mutex - Mutual Exclusion. Нужен для разграничения доступа к ресурсам. Это бинарный семафор с важным условием - возвращать его может только тот, кто его взял. \textcolor{orange}{Это концепция владения ресурсом}. Нельзя использовать в прерываниях $\Rightarrow$ используйте бинарный семафор.
+  		\end{itemize}
+  	\includegraphics[width=6cm, height=3.5cm]{sem1.png} \includegraphics[width=6cm, height=3.5cm]{sem2.png}\\
+  	\end{frame}
+  	\begin{frame}
+  		\large \textbf{\textcolor{structure.fg}{Группы событий}}. Пример в \textcolor{red}{github}.
+  		\begin{itemize}
+  			\item \textcolor{orange}{EventGroups} - механизм для ожидания множественных флагов
+  			\item Какие-то задачи выставляют флаги какие-то флаги, сигнализируя события (например блок работы с камерой сигнализирует прием новых данных, а блок управления кикером сигнализирует, что удар перезарядился).
+  			\item Другие задачи могут засыпать в ожидании определенных комбинаций битов или хотя бы одного
+  		\end{itemize}
+  		
+  	\end{frame}
+  	\begin{frame}[t]
+  			\large \textbf{\textcolor{structure.fg}{Группы событий}}. Пример в \textcolor{red}{github}.\\
+  		\includegraphics[width=6cm, height=3.5cm]{groups1.png} \includegraphics[width=6cm, height=3.5cm]{groups2.png}\\
+  		\begin{tikzpicture}[remember picture,overlay]
+  			\node[draw,rounded corners,fill=green!3,text width=14cm,align=left]
+  			at (6.75,-1.75) 
+  			{\begin{itemize}
+  					\item \textcolor{structure.fg}{xEventGroup} - хэндлер группы.
+  					\item \textcolor{structure.fg}{uxBitsToSet} - какие биты выставить.
+  					\item \textcolor{structure.fg}{uxBitsWaitFor} - Какие биты ждать.
+  					\item \textcolor{structure.fg}{xClearOnExit} - При срабатывании группы: pdTrue (аналог true для FreeRtos) $\implies$ сбросить биты, иначе (pdFalse) не сбрасывать.
+  					\item \textcolor{structure.fg}{xWaitForAllBits} - pdTrue - ждать все биты (логическое И), иначе ждать хотя бы один (логическое или).
+  					\item \textcolor{structure.fg}{xTicksToWait} - тайм-аут.
+  			\end{itemize}};
+  		\end{tikzpicture}
+  	\end{frame}
+  	
+  	\begin{frame}
+  		\large \textbf{\textcolor{structure.fg}{Взаимодействие задач в прерываниях}}.
+  		\begin{itemize}
+  			\item Прерывание - это не обычная задача. 
+  			\item Она не учитывается планировщиком, у нее нет стека, хэндера и т.п.
+  			\item Блокировка в прерывании вызовет зависание программы (т.к. системных тиков нет)
+  			\item Поэтому все вышеописанные механизмы не будут работать в прерываниях
+  			\item Для всех структур (кроме mutex -> вместо него бинарный семафор) есть fromISR альтернативы, которые дают не прямую директиву планировщику, а указание, что делать сразу после выхода из прерывания.
+  			\item Если всё же внутри прерывания нужен контроль ресурсов, то используются критические секции (мы их уже использовали для UART).
+  			\newpage
+  			\item Везде нужно просто в конце добавлять fromISR, в случае очереди: xQueueSend() $\implies$ xQueueSend\textcolor{red}{FromISR}()
+  			\item Также для каждой функции появляется доп аргумент, который указывает планировщику, нужно ли переключать контекст при выходе из прерывания, или идем по стандартному пути (откуда вошли в прерывание туда и вернулись, или переключились на доп действие).
+  			\item В конце прерывания нужно вызвать portYIELD\_FROM\_ISR(xHigherPriorityTaskWoken); Оно как раз и вызовет внеплановое переключение контекста.
+  			\item \textcolor{red}{Пример прерывания есть в github!}
+  		\end{itemize}
+  	\end{frame}
+\end{document}
+ 
+
